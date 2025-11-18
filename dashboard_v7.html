@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Farm Weather Dashboard V7 — Pro Edition</title>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- jsPDF CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f4f4f4;
+        }
+
+        header {
+            background: #0a7ac7;
+            padding: 20px;
+            text-align: center;
+            color: white;
+            font-size: 26px;
+            font-weight: bold;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1100px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+        }
+
+        h2 {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        canvas {
+            margin-top: 30px;
+            width: 100% !important;
+            height: 380px !important;
+        }
+
+        .btn-download {
+            background: #0a7ac7;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            display: block;
+            margin: 35px auto;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .btn-download:hover {
+            background: #065f9a;
+        }
+
+        .summary-box {
+            background: #e9f5ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border-left: 6px solid #0a7ac7;
+        }
+    </style>
+</head>
+
+<body>
+<header>
+    📊 Farm Weather Dashboard — Version 7 (Pro + PDF Export)
+</header>
+
+<div class="container">
+
+    <h2>Summary Insights</h2>
+
+    <div class="summary-box">
+        <p id="summary_text">Loading summary...</p>
+    </div>
+
+    <h2>Temperature Trends (°C)</h2>
+    <canvas id="tempChart"></canvas>
+
+    <h2>Rainfall (mm)</h2>
+    <canvas id="rainChart"></canvas>
+
+    <button class="btn-download" onclick="downloadPDF()">📄 Download PDF Report</button>
+
+</div>
+
+<script>
+    // --------- LOAD CSV FILE (same folder) --------------
+    async function loadCSV() {
+        const file = "paris_2015_2024_weather.csv"; // Change if needed
+        const response = await fetch(file);
+        const data = await response.text();
+
+        const rows = data.split("\n").slice(1);
+        let dates = [];
+        let tmax = [];
+        let tmin = [];
+        let precip = [];
+
+        rows.forEach(row => {
+            const cols = row.split(",");
+            dates.push(cols[0]);
+            tmax.push(parseFloat(cols[1]));
+            tmin.push(parseFloat(cols[2]));
+            precip.push(parseFloat(cols[3]));
+        });
+
+        return { dates, tmax, tmin, precip };
+    }
+
+    // --------- BUILD DASHBOARD ------------------
+    loadCSV().then(data => {
+        // Summary
+        const avgTemp =
+            (data.tmax.reduce((a,b)=>a+b,0) / data.tmax.length).toFixed(1);
+
+        const totalRain =
+            data.precip.reduce((a,b)=>a+b,0).toFixed(0);
+
+        document.getElementById("summary_text").innerHTML =
+            `<b>Average Temperature:</b> ${avgTemp} °C<br>
+             <b>Total Rainfall:</b> ${totalRain} mm<br>
+            Weather analytics based on Paris dataset (2015–2024).`;
+
+        // Temperature chart
+        new Chart(document.getElementById("tempChart"), {
+            type: 'line',
+            data: {
+                labels: data.dates,
+                datasets: [
+                    {
+                        label: "Max Temp (°C)",
+                        data: data.tmax,
+                        borderColor: "red",
+                        borderWidth: 1,
+                        fill: false
+                    },
+                    {
+                        label: "Min Temp (°C)",
+                        data: data.tmin,
+                        borderColor: "blue",
+                        borderWidth: 1,
+                        fill: false
+                    }
+                ]
+            },
+        });
+
+        // Rain chart
+        new Chart(document.getElementById("rainChart"), {
+            type: 'bar',
+            data: {
+                labels: data.dates,
+                datasets: [{
+                    label: "Rainfall (mm)",
+                    data: data.precip,
+                    backgroundColor: "rgba(0,120,200,0.5)",
+                }]
+            },
+        });
+    });
+
+    // -------- PDF EXPORT ------------------
+    function downloadPDF() {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+
+        pdf.setFontSize(18);
+        pdf.text("Farm Weather Dashboard — V7 Report", 40, 40);
+
+        pdf.setFontSize(12);
+        pdf.text(document.getElementById("summary_text").innerText, 40, 80);
+
+        pdf.save("Farm_Dashboard_V7_Report.pdf");
+    }
+</script>
+
+</body>
+</html>
